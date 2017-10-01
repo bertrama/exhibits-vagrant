@@ -1,0 +1,35 @@
+---
+- name: Disable rpcbind
+  service:
+    name: rpcbind
+    state: stopped
+    enabled: no
+  when: vagrant == true
+
+- name: vagrant bashrc
+  patch:
+    backup: no
+    dest: /home/vagrant/.bashrc
+    src: roles/standard/patches/bashrc.patch
+  when: vagrant == true
+
+- name: Copy unison.pref and unison.list
+  copy:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+    mode: 0664
+  when: vagrant == true
+  notify: apt update
+  with_items:
+    - src: roles/standard/files/apt/preferences.d/unison.pref
+      dest: /etc/apt/preferences.d/unison.pref
+    - src: roles/standard/files/apt/sources.list.d/unison.list
+      dest: /etc/apt/sources.list.d/unison.list
+  
+- name: Flush handlers
+  meta: flush_handlers
+  when: vagrant == true
+
+- name: Unison
+  apt: name=unison state=present
+  when: vagrant == true

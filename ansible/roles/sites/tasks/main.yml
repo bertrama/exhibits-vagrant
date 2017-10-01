@@ -1,0 +1,100 @@
+- name: Create document roots
+  file:
+    state: directory
+    path: "/sites/{{ item }}"
+    mode: 0775
+    owner: vagrant
+    group: vagrant
+  when: vagrant == true
+  with_items: sites
+    
+
+- name: Create document roots
+  file:
+    state: directory
+    path: "/sites/{{ item }}"
+    mode: 0775
+    owner: root
+    group: root
+  when: vagrant == false
+  with_items: sites
+
+- name: Create mysql databases
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  with_items: sites
+
+- name: Create mysql users
+  mysql_user:
+    name: "{{ item }}"
+    host: localhost
+    password: "{{ lookup('password', 'credentials/mysql/' + item + ' length=15') }}"
+    priv: "{{ item }}.*:ALL"
+    state: present
+  with_items: sites
+
+- name: Create apache site-available
+  template:
+    src: roles/sites/files/apache2/sites-available/001-site.conf.j2
+    dest: "/etc/apache2/sites-available/001-{{ item }}.conf"
+    mode: 0664
+    owner: root
+    group: root
+  notify: apache reload
+  with_items: sites
+
+- name: Remove the default vhost config
+  file: state=absent path=/etc/apache2/sites-enabled/000-default.conf
+  notify: apache reload
+
+- name: Enable apache modules.
+  file:
+    dest: "{{item.dest}}"
+    src: "{{item.src}}"
+    owner: root
+    group: root
+    state: link
+  notify: apache reload
+  with_items:
+    - dest: /etc/apache2/mods-enabled/ldap.conf
+      src: ../mods-available/ldap.conf
+    - dest: /etc/apache2/mods-enabled/ldap.load
+      src: ../mods-available/ldap.load
+    - dest: /etc/apache2/mods-enabled/authnz_ldap.load
+      src: ../mods-available/authnz_ldap.load
+    - dest: /etc/apache2/mods-enabled/rewrite.load
+      src: ../mods-available/rewrite.load
+
+- name: Enable apache site configurations
+  file:
+    dest: "/etc/apache2/sites-enabled/001-{{ item }}.conf"
+    src: "../sites-available/001-{{ item }}.conf"
+    owner: root
+    group: root
+    state: link
+  notify: apache reload
+  with_items: sites
+
+# This is handled better in ansible 2.1. I'm on 2.0.0.2 currently.
+# http://chaosmail.github.io/programming/2015/03/04/install-deb-packages-in-ansible/
+- name: Check if php-wpcli is installed
+  command: dpkg-query -f '${Version}' -W php-wpcli
+  register: php_wpcli_check_deb
+  failed_when: php_wpcli_check_deb.rc > 1
+  changed_when: php_wpcli_check_deb.rc == 1
+
+- name: Download php-wpcli
+  get_url:
+    url="https://github.com/wp-cli/builds/raw/gh-pages/deb/php-wpcli_1.1.0_all.deb"
+    dest="/tmp/php-wpcli.deb"
+    validate_certs="false"
+  when:
+    - php_wpcli_check_deb.rc == 1
+    - php_wpcli_check_deb.stdout != '1.1.0'
+
+- name: Install php-wpcli
+  apt: deb="/tmp/php-wpcli.deb"
+  when:
+    - php_wpcli_check_deb.rc == 1
+    - php_wpcli_check_deb.stdout != '1.1.0'

@@ -1,0 +1,9 @@
+---
+- name: Install mysql-common
+  apt: name=mysql-common=5.5* state=present 
+
+- name: Install mysql
+  apt: name=mysql-server state=present
+
+- name: Install mysql python module
+  apt: name=python-mysqldb state=present

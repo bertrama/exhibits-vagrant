@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+
+system('vagrant', 'ssh', '--', 'chown', 'www-data', '/sites/exhibits/application/log', '/sites/exhibits/files');
+
+ROOT = File.expand_path(__FILE__ + '/../..')
+CONFIG = "#{ROOT}/sites/exhibits/db.ini"
+EXAMPLE = "#{CONFIG}.EXAMPLE"
+if File.exist?("#{ROOT}/credentials/mysql/exhibits")
+  CREDENTIALS = "#{ROOT}/credentials/mysql/exhibits"
+elsif File.exist?("#{ROOT}/ansible/credentials/mysql/exhibits")
+  CREDENTIALS = "#{ROOT}/ansible/credentials/mysql/exhibits"
+end
+exit 0 if File.exist?(CONFIG)
+
+params = {
+  'THE_DOMAIN_CURRENT_SITE' => 'exhibits.local',
+  'THE_DB_NAME' => 'exhibits',
+  'THE_DB_USER' => 'exhibits',
+  'THE_DB_PASS' => IO.read(CREDENTIALS).chomp,
+  'THE_DB_HOST' => 'localhost',
+}
+config = IO.read(EXAMPLE)
+puts config
+params.each_pair do |search, replace|
+  config.sub!(search, replace)
+end
+puts config
+IO.write(CONFIG, config)

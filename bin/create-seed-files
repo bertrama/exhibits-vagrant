@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Step 1: Copy the exhibits files and database directory locally.
+# mysqldump ... | ... | mysql
+# rsync dev:files files
+
+# Step 2: Get a list of files/hashes
+FILES=$(cat <<EOF | xargs echo | xargs -0 mysql -u root exhibits --batch --skip-column-names --execute
+SELECT 
+  f.filename
+FROM 
+  omeka_files f JOIN 
+  omeka_exhibit_block_attachments eba ON f.item_id = eba.item_id JOIN
+  omeka_exhibit_page_blocks epb ON eba.block_id = epb.id JOIN
+  omeka_exhibit_pages ep ON epb.page_id = ep.id
+WHERE
+ ep.exhibit_id in (212, 214, 210, 206)
+EOF
+)
+
+# Step 3: "remove" files whose hash isn't in the list of files above.
+DIRS="files/fullsize files/square_thumbnails files/thumbnails"
+for DIR in $DIRS ; do
+  for file in "$DIR/"* ; do
+    if [ x"$file" != x"index.html" ] ; then
+      h=$(basename "$file" .jpg)
+      if [[ "$FILES"  != *"$h"* ]] ; then
+        cp /dev/null "$file"
+      fi
+    fi
+  done
+done
+
+# Step 4: "remove" zoom_tiles whose hash isn't in the lsit of files above.
+DIR="files/zoom_tiles"
+for file in "$DIR/"* ; do
+  h=$(basename "$file" _zdata)
+  if [[ "$FILES" != *"$h"* ]] ; then
+    find \
+      "$file" \
+      -type f \
+      -not -name .htaccess -a \
+      -not -name index.html \
+      -exec cp /dev/null {} \;
+  fi
+done
+
+# Step 5: "remove" the original versions.
+find files/original -type f -exec cp /dev/null {} \;
+
+# Step 6: mogrify the zoom_tiles so that the images are small and look bad.
+find files/zoom_tiles \
+  -type f \
+  -name \*.jpg \
+  -size +0 \
+  -exec mogrify \
+    -sampling-factor 4:2:0 \
+    -strip \
+    -interlace Plane \
+    -gaussian-blur 0.05 \
+    -colorspace RGB \
+    -quality 5% \
+    {} \; 
+
+# Step 7: Create a tarball of the newly processed files directory.
+tar czf files.tar.gz files
