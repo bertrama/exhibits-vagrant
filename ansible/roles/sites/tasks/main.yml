@@ -7,7 +7,6 @@
     group: vagrant
   when: vagrant == true
   with_items: sites
-    
 
 - name: Create document roots
   file:
@@ -16,6 +15,16 @@
     mode: 0775
     owner: root
     group: root
+  when: vagrant == false
+  with_items: sites
+
+- name: File uploads directory
+  file:
+    state: directory
+    path: "/sites/{{ item }}/files"
+    mode: 2775
+    owner: www-data
+    group: vagrant
   when: vagrant == false
   with_items: sites
 

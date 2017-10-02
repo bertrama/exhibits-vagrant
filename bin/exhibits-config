@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-system('vagrant', 'ssh', '--', 'chown', 'www-data', '/sites/exhibits/application/log', '/sites/exhibits/files');
-
 ROOT = File.expand_path(__FILE__ + '/../..')
 CONFIG = "#{ROOT}/sites/exhibits/db.ini"
 EXAMPLE = "#{CONFIG}.EXAMPLE"
