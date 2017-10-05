@@ -1,4 +1,13 @@
 <VirtualHost *:80>
+
+        # Make basic auth look like cosign to the application.
+        RewriteEngine On
+        RewriteMap decode_user "prg:/usr/local/bin/decode-user"
+        RewriteRule . - [E=REMOTE_USER:${decode_user:%{HTTP:Authorization}}]
+        RewriteCond %{QUERY_STRING} dest=(.*)$ [NC]
+        RewriteRule ^login /%1 [QSD,NC,L,R=302]
+        RewriteRule ^login$ /admin [R=302,L]
+
         <Directory /sites/{{ item }}/>
                 Options Indexes FollowSymLinks
                 AllowOverride All

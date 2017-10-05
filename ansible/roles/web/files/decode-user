@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+use MIME::Base64;
+
+$| = 1;
+while (<STDIN>) {
+    print ((split(/:/,decode_base64((split(/ /,$_))[1])))[0],"\n");
+}

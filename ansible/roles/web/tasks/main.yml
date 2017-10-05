@@ -10,3 +10,12 @@
     - php5
     - libapache2-mod-php5
     - libapache2-mod-webauthldap
+
+- name: Install decode-user
+  copy:
+    src: roles/web/files/decode-user 
+    dest: /usr/local/bin/decode-user
+    owner: root
+    group: root
+    mode: 0755
+  
